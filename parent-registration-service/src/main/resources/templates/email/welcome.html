@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to BubbleBreath</title>
+    <style>
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            color: #3B82F6;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .welcome-message {
+            background-color: #f0f9ff;
+            border-left: 4px solid #3B82F6;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #3B82F6;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">BubbleBreath</div>
+            <h1>Welcome to BubbleBreath!</h1>
+        </div>
+        
+        <p>Hello <strong th:text="${name}">User</strong>,</p>
+        
+        <div class="welcome-message">
+            <p>🎉 Congratulations! Your email has been verified successfully.</p>
+        </div>
+        
+        <p>You're all set to start your journey with BubbleBreath! Our platform is specially designed to help children learn about emotions and social skills through fun, interactive exercises.</p>
+        
+        <p>Here's what you can do next:</p>
+        <ul>
+            <li>Explore our exercise library</li>
+            <li>Try the free exercises available</li>
+            <li>Track your progress in the dashboard</li>
+            <li>Discover new games and activities</li>
+        </ul>
+        
+        <p style="text-align: center;">
+            <a href="https://bubblebreath.com/dashboard" class="button">Go to Dashboard</a>
+        </p>
+        
+        <p>If you have any questions, feel free to reach out to our support team.</p>
+        
+        <p>Happy exercising!</p>
+        <p>The BubbleBreath Team</p>
+        
+        <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+            <p>&copy; 2026 BubbleBreath. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

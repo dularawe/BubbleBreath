@@ -2,10 +2,6 @@ package com.bubblebreath.loginservice.security;
 
 import com.bubblebreath.loginservice.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,10 +9,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class UserPrincipal implements UserDetails {
 
     private Long id;
@@ -29,20 +21,42 @@ public class UserPrincipal implements UserDetails {
     private boolean enabled;
     private boolean accountNonLocked;
 
-    public static UserPrincipal create(User user) {
-        // Here we could map roles if User entity had them. For now, a generic role.
-        Collection<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+    public UserPrincipal() {
+    }
 
-        return UserPrincipal.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .password(user.getPassword())
-                .authorities(authorities)
-                // If active is true and emailVerified is true, the account is enabled
-                .enabled(user.getActive() && user.getEmailVerified())
-                // Basic check if lock expires in the past or is null
-                .accountNonLocked(user.getAccountLockedUntil() == null || user.getAccountLockedUntil().isBefore(java.time.LocalDateTime.now()))
-                .build();
+    public UserPrincipal(Long id, String email, String password,
+            Collection<? extends GrantedAuthority> authorities,
+            boolean enabled, boolean accountNonLocked) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.authorities = authorities;
+        this.enabled = enabled;
+        this.accountNonLocked = accountNonLocked;
+    }
+
+    public static UserPrincipalBuilder builder() {
+        return new UserPrincipalBuilder();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public static UserPrincipal create(User user) {
+        Collection<GrantedAuthority> authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        return new UserPrincipal(
+                user.getId(),
+                user.getEmail(),
+                user.getPassword(),
+                authorities,
+                true,
+                user.getAccountLockedUntil() == null
+                        || user.getAccountLockedUntil().isBefore(java.time.LocalDateTime.now()));
     }
 
     @Override
@@ -78,5 +92,51 @@ public class UserPrincipal implements UserDetails {
     @Override
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public static class UserPrincipalBuilder {
+        private Long id;
+        private String email;
+        private String password;
+        private Collection<? extends GrantedAuthority> authorities;
+        private boolean enabled;
+        private boolean accountNonLocked;
+
+        UserPrincipalBuilder() {
+        }
+
+        public UserPrincipalBuilder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public UserPrincipalBuilder email(String email) {
+            this.email = email;
+            return this;
+        }
+
+        public UserPrincipalBuilder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public UserPrincipalBuilder authorities(Collection<? extends GrantedAuthority> authorities) {
+            this.authorities = authorities;
+            return this;
+        }
+
+        public UserPrincipalBuilder enabled(boolean enabled) {
+            this.enabled = enabled;
+            return this;
+        }
+
+        public UserPrincipalBuilder accountNonLocked(boolean accountNonLocked) {
+            this.accountNonLocked = accountNonLocked;
+            return this;
+        }
+
+        public UserPrincipal build() {
+            return new UserPrincipal(id, email, password, authorities, enabled, accountNonLocked);
+        }
     }
 }

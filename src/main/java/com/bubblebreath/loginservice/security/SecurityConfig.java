@@ -1,6 +1,5 @@
 package com.bubblebreath.loginservice.security;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,12 +15,26 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationEntryPoint unauthorizedHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    public SecurityConfig(JwtAuthenticationEntryPoint unauthorizedHandler,
+            JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.unauthorizedHandler = unauthorizedHandler;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
+
+    /**
+     * The core configuration for Spring Security.
+     * Sets the application to be completely stateless (ideal for REST APIs),
+     * disables CSRF (since we use tokens/cookies), permits open access to
+     * all /api/auth/** endpoints (login, register, forgot-password),
+     * and forces authentication for everything else.
+     * Also registers our custom JWT filter to run before the standard
+     * username/password filter.
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http

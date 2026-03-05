@@ -22,7 +22,9 @@ public class JwtTokenProvider {
     private String jwtSecret;
 
     @Value("${jwt.expiration}")
-    private long jwtExpirationInMs;
+    private int jwtExpirationInMs;
+
+    private int rememberMeExpirationInMs = 604800000; // 7 days in ms
 
     private SecretKey key;
 
@@ -31,11 +33,16 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(Authentication authentication) {
+    /**
+     * Generates a secure JWT token for the authenticated user.
+     * Incorporates the 'rememberMe' boolean to dictate the expiration length
+     * (e.g., 7 days vs 24 hours).
+     */
+    public String generateToken(Authentication authentication, boolean rememberMe) {
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
 
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
+        Date expiryDate = new Date(now.getTime() + (rememberMe ? rememberMeExpirationInMs : jwtExpirationInMs));
 
         return Jwts.builder()
                 .subject(userPrincipal.getEmail())
@@ -45,6 +52,10 @@ public class JwtTokenProvider {
                 .compact();
     }
 
+    /**
+     * Parses the JWT to extract the subject, which is the user's email address.
+     * Securely verified using the server's secret HMAC key.
+     */
     public String getEmailFromJWT(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(key)
@@ -55,6 +66,10 @@ public class JwtTokenProvider {
         return claims.getSubject();
     }
 
+    /**
+     * Validates that the provided JWT token is well-formed, correctly signed,
+     * and not expired. Used by the security filter before granting access.
+     */
     public boolean validateToken(String authToken) {
         try {
             Jwts.parser().verifyWith(key).build().parseSignedClaims(authToken);

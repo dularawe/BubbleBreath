@@ -8,7 +8,6 @@ import com.bubblebreath.loginservice.repository.PasswordResetTokenRepository;
 import com.bubblebreath.loginservice.repository.UserRepository;
 import com.bubblebreath.loginservice.security.JwtTokenProvider;
 import com.bubblebreath.loginservice.security.UserPrincipal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -21,8 +20,16 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class AuthService {
+
+    public AuthService(AuthenticationManager authenticationManager, UserRepository userRepository, JwtTokenProvider tokenProvider, PasswordResetTokenRepository tokenRepository, org.springframework.security.crypto.password.PasswordEncoder passwordEncoder, EmailService emailService) {
+        this.authenticationManager = authenticationManager;
+        this.userRepository = userRepository;
+        this.tokenProvider = tokenProvider;
+        this.tokenRepository = tokenRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
+    }
 
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
@@ -34,6 +41,13 @@ public class AuthService {
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_TIME_DURATION = 30; // in minutes
 
+    /**
+     * Core authentication logic. Checks if the user is verified, active, and not
+     * locked out
+     * before delegating to the Spring Security AuthenticationManager.
+     * Resets failed attempts on success or increases them on failure (Brute Force
+     * Protection).
+     */
     public LoginResponse authenticate(LoginRequest loginRequest) {
         User user = userRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
@@ -69,7 +83,7 @@ public class AuthService {
             user.setLastLoginAt(LocalDateTime.now());
             userRepository.save(user);
 
-            String jwt = tokenProvider.generateToken(authentication);
+            String jwt = tokenProvider.generateToken(authentication, loginRequest.isRememberMe());
 
             return LoginResponse.builder()
                     .token(jwt)
@@ -87,6 +101,11 @@ public class AuthService {
         }
     }
 
+    /**
+     * Brute-force protection mechanism.
+     * Increments the user's failed login count. Once it hits the maximum (5),
+     * locks the account for a specific duration (30 minutes).
+     */
     private void increaseFailedAttempts(User user) {
         int newFailAttempts = user.getFailedLoginAttempts() + 1;
 
@@ -98,6 +117,11 @@ public class AuthService {
         userRepository.save(user);
     }
 
+    /**
+     * Starts the forgot password process.
+     * Removes any old tokens, creates a new UUID token valid for 1 hour,
+     * and sends an email to the user with the token.
+     */
     public void processForgotPassword(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
@@ -120,6 +144,12 @@ public class AuthService {
         emailService.sendEmail(user.getEmail(), "Password Reset Request", text);
     }
 
+    /**
+     * Finalizes the password reset.
+     * Verifies the token exists and isn't expired.
+     * If valid, hashes the new password, unlocks the account, and deletes the
+     * token.
+     */
     public void updatePassword(String token, String newPassword) {
         PasswordResetToken resetToken = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid token"));
@@ -135,5 +165,9 @@ public class AuthService {
         userRepository.save(user);
 
         tokenRepository.deleteByUser(user);
+
+        // Send success notification email
+        String text = "Your password has been successfully reset. If you did not perform this action, please contact support immediately.";
+        emailService.sendEmail(user.getEmail(), "Password Reset Successful", text);
     }
 }

@@ -2,8 +2,10 @@ package com.bubblebreath.parentregistration.controller;
 
 import com.bubblebreath.parentregistration.dto.ApiResponse;
 import com.bubblebreath.parentregistration.dto.EmailVerificationRequest;
+import com.bubblebreath.parentregistration.dto.ForgotPasswordRequest;
 import com.bubblebreath.parentregistration.dto.RegistrationRequest;
 import com.bubblebreath.parentregistration.dto.RegistrationResponse;
+import com.bubblebreath.parentregistration.dto.ResetPasswordRequest;
 import com.bubblebreath.parentregistration.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,5 +53,33 @@ public class RegistrationController {
     @GetMapping("/health")
     public ResponseEntity<ApiResponse<String>> health() {
         return ResponseEntity.ok(ApiResponse.success("OK", "Service is healthy"));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+            userService.initiatePasswordReset(request);
+            // Do not reveal whether the email exists
+            return ResponseEntity.ok(ApiResponse.success(null,
+                    "If an account exists for this email, a password reset link has been sent."));
+        } catch (Exception e) {
+            log.error("Forgot password request failed", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            userService.resetPassword(request);
+            return ResponseEntity.ok(ApiResponse.success(null, "Password has been reset successfully"));
+        } catch (Exception e) {
+            log.error("Password reset failed", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error(e.getMessage()));
+        }
     }
 }

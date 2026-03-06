@@ -1,10 +1,13 @@
 package com.bubblebreath.parentregistration.service;
 
+import com.bubblebreath.parentregistration.dto.ForgotPasswordRequest;
 import com.bubblebreath.parentregistration.dto.RegistrationRequest;
 import com.bubblebreath.parentregistration.dto.RegistrationResponse;
+import com.bubblebreath.parentregistration.dto.ResetPasswordRequest;
 import com.bubblebreath.parentregistration.dto.UpdateUserRequest;
 import com.bubblebreath.parentregistration.dto.UserResponse;
 import com.bubblebreath.parentregistration.entity.EmailVerification;
+import com.bubblebreath.parentregistration.entity.PasswordResetToken;
 import com.bubblebreath.parentregistration.entity.User;
 import com.bubblebreath.parentregistration.exception.DuplicateEmailException;
 import com.bubblebreath.parentregistration.exception.InvalidPasswordException;
@@ -22,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Random;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -155,6 +159,59 @@ public class UserService {
         passwordResetTokenRepository.deleteByUser(user);
         userRepository.delete(user);
         log.info("User deleted: id={}", id);
+    }
+
+    @Transactional
+    public void initiatePasswordReset(ForgotPasswordRequest request) {
+        userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
+            // Remove existing tokens for this user
+            passwordResetTokenRepository.deleteByUser(user);
+
+            String token = UUID.randomUUID().toString();
+
+            PasswordResetToken resetToken = PasswordResetToken.builder()
+                    .user(user)
+                    .token(token)
+                    .expiresAt(LocalDateTime.now().plusHours(1))
+                    .used(false)
+                    .build();
+
+            passwordResetTokenRepository.save(resetToken);
+
+            try {
+                emailService.sendPasswordResetEmail(user.getEmail(), user.getFullName(), token);
+            } catch (MailException e) {
+                log.error("Failed to send password reset email to: {}", user.getEmail(), e);
+                throw new RuntimeException("Failed to send password reset email", e);
+            }
+        });
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new InvalidPasswordException("Passwords do not match");
+        }
+
+        PasswordResetToken resetToken = passwordResetTokenRepository
+                .findByTokenAndUsedFalse(request.getToken())
+                .orElseThrow(() -> new RuntimeException("Invalid or expired password reset token"));
+
+        if (resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Password reset token has expired");
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setFailedLoginAttempts(0);
+        user.setAccountLockedUntil(null);
+        userRepository.save(user);
+
+        resetToken.setUsed(true);
+        resetToken.setUsedAt(LocalDateTime.now());
+        passwordResetTokenRepository.save(resetToken);
+
+        log.info("Password reset successfully for user: {}", user.getEmail());
     }
 
     private UserResponse toUserResponse(User user) {

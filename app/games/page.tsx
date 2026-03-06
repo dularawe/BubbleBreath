@@ -1,103 +1,171 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { AppNav } from "@/components/app-nav"
 import { GameCard } from "@/components/game-card"
 import { Mascot } from "@/components/mascot"
-import { Wind, Heart, Users, Brain, Palette, Music, Star, Lock } from "lucide-react"
+import { useGames, useCategories } from "@/hooks/use-api"
+import { Wind, Heart, Users, Brain, Palette, Music, Smile, Star, Lock, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const gameCategories = [
-  { id: "all", label: "All Games" },
-  { id: "breathing", label: "Breathing" },
-  { id: "emotions", label: "Emotions" },
-  { id: "social", label: "Social" },
-  { id: "mindfulness", label: "Mindfulness" },
-]
+// Icon mapping for games
+const iconMap: Record<string, React.ReactNode> = {
+  wind: <Wind className="w-10 h-10" />,
+  heart: <Heart className="w-10 h-10" />,
+  users: <Users className="w-10 h-10" />,
+  brain: <Brain className="w-10 h-10" />,
+  palette: <Palette className="w-10 h-10" />,
+  music: <Music className="w-10 h-10" />,
+  smile: <Smile className="w-10 h-10" />,
+}
 
-const games = [
+// Color mapping
+const colorMap: Record<string, "coral" | "mint" | "sunny" | "sky" | "lavender"> = {
+  coral: "coral",
+  mint: "mint",
+  sunny: "sunny",
+  sky: "sky",
+  lavender: "lavender",
+}
+
+// Fallback static games for when API is unavailable
+const fallbackGames = [
   {
-    id: "bubble-breathing",
-    title: "Bubble Breathing",
-    description: "Blow magical bubbles by taking slow, deep breaths!",
-    icon: <Wind className="w-10 h-10" />,
-    href: "/games/bubble-breathing",
+    id: "smile-therapy",
+    name: "Smile Therapy",
+    description: "Practice your smile with AI-powered feedback and earn points!",
+    icon: "smile",
+    href: "/games/smile-therapy",
     level: 1,
     unlocked: true,
+    stars: 0,
+    color: "sunny",
+    categoryId: "emotions",
+  },
+  {
+    id: "bubble-breathing",
+    name: "Bubble Breathing",
+    description: "Blow magical bubbles by taking slow, deep breaths!",
+    icon: "wind",
+    href: "/games/bubble-breathing",
+    level: 2,
+    unlocked: true,
     stars: 3,
-    color: "mint" as const,
-    category: "breathing",
+    color: "mint",
+    categoryId: "breathing",
   },
   {
     id: "emotion-match",
-    title: "Emotion Match",
+    name: "Emotion Match",
     description: "Match faces with feelings in this fun card game!",
-    icon: <Heart className="w-10 h-10" />,
+    icon: "heart",
     href: "/games/emotion-match",
     level: 2,
     unlocked: true,
     stars: 2,
-    color: "coral" as const,
-    category: "emotions",
+    color: "coral",
+    categoryId: "emotions",
   },
   {
     id: "friend-finder",
-    title: "Friend Finder",
+    name: "Friend Finder",
     description: "Learn how to make friends through fun scenarios!",
-    icon: <Users className="w-10 h-10" />,
+    icon: "users",
     href: "/games/friend-finder",
     level: 3,
     unlocked: true,
     stars: 1,
-    color: "sky" as const,
-    category: "social",
+    color: "sky",
+    categoryId: "social",
   },
   {
     id: "calm-clouds",
-    title: "Calm Clouds",
+    name: "Calm Clouds",
     description: "Float on peaceful clouds and relax your mind!",
-    icon: <Brain className="w-10 h-10" />,
+    icon: "brain",
     href: "/games/calm-clouds",
     level: 4,
     unlocked: true,
     stars: 0,
-    color: "lavender" as const,
-    category: "mindfulness",
+    color: "lavender",
+    categoryId: "mindfulness",
   },
   {
     id: "color-moods",
-    title: "Color My Mood",
+    name: "Color My Mood",
     description: "Express your feelings through beautiful art!",
-    icon: <Palette className="w-10 h-10" />,
+    icon: "palette",
     href: "/games/color-moods",
     level: 5,
     unlocked: false,
     stars: 0,
-    color: "sunny" as const,
-    category: "emotions",
+    color: "sunny",
+    categoryId: "emotions",
   },
   {
     id: "rhythm-relax",
-    title: "Rhythm Relax",
+    name: "Rhythm Relax",
     description: "Follow the beat and calm your heart!",
-    icon: <Music className="w-10 h-10" />,
+    icon: "music",
     href: "/games/rhythm-relax",
     level: 6,
     unlocked: false,
     stars: 0,
-    color: "coral" as const,
-    category: "mindfulness",
+    color: "coral",
+    categoryId: "mindfulness",
   },
+]
+
+const fallbackCategories = [
+  { id: "all", name: "All Games" },
+  { id: "breathing", name: "Breathing" },
+  { id: "emotions", name: "Emotions" },
+  { id: "social", name: "Social" },
+  { id: "mindfulness", name: "Mindfulness" },
 ]
 
 export default function GamesPage() {
   const [selectedCategory, setSelectedCategory] = useState("all")
-  const totalStars = games.reduce((acc, game) => acc + game.stars, 0)
+  
+  const { data: apiGames, isLoading: gamesLoading, error: gamesError } = useGames()
+  const { data: apiCategories, isLoading: categoriesLoading } = useCategories()
+
+  // Use API data if available, otherwise use fallback
+  const games = useMemo(() => {
+    if (apiGames && apiGames.length > 0) {
+      return apiGames.map((game, index) => ({
+        ...game,
+        icon: game.imageUrl?.includes('wind') ? 'wind' : 
+              game.imageUrl?.includes('heart') ? 'heart' :
+              game.imageUrl?.includes('users') ? 'users' :
+              game.imageUrl?.includes('brain') ? 'brain' :
+              game.imageUrl?.includes('palette') ? 'palette' :
+              game.imageUrl?.includes('music') ? 'music' : 'wind',
+        href: `/games/${game.id}`,
+        level: game.level || index + 1,
+        unlocked: game.unlocked !== false,
+        stars: game.stars || 0,
+        color: game.category?.color || ['mint', 'coral', 'sky', 'lavender', 'sunny'][index % 5],
+      }))
+    }
+    return fallbackGames
+  }, [apiGames])
+
+  const categories = useMemo(() => {
+    if (apiCategories && apiCategories.length > 0) {
+      return [{ id: "all", name: "All Games" }, ...apiCategories]
+    }
+    return fallbackCategories
+  }, [apiCategories])
+
+  const totalStars = games.reduce((acc, game) => acc + (game.stars || 0), 0)
   const maxStars = games.length * 3
 
   const filteredGames = selectedCategory === "all" 
     ? games 
-    : games.filter(game => game.category === selectedCategory)
+    : games.filter(game => game.categoryId === selectedCategory)
+
+  const isLoading = gamesLoading || categoriesLoading
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pt-24 md:pb-8">
@@ -150,7 +218,7 @@ export default function GamesPage() {
 
         {/* Category Filter */}
         <div className="flex flex-wrap gap-2 mb-8">
-          {gameCategories.map((category) => (
+          {categories.map((category) => (
             <button
               key={category.id}
               onClick={() => setSelectedCategory(category.id)}
@@ -161,27 +229,57 @@ export default function GamesPage() {
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
-              {category.label}
+              {category.name}
             </button>
           ))}
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <span className="ml-2 text-muted-foreground">Loading games...</span>
+          </div>
+        )}
+
+        {/* Error State - Show fallback data */}
+        {gamesError && (
+          <div className="bg-secondary/20 border-2 border-secondary rounded-2xl p-4 mb-8">
+            <p className="text-sm text-muted-foreground">
+              Using offline games. Connect to the internet to see the latest!
+            </p>
+          </div>
+        )}
+
         {/* Games Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredGames.map((game) => (
-            <GameCard
-              key={game.id}
-              title={game.title}
-              description={game.description}
-              icon={game.icon}
-              href={game.href}
-              level={game.level}
-              unlocked={game.unlocked}
-              stars={game.stars}
-              color={game.color}
-            />
-          ))}
-        </div>
+        {!isLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredGames.map((game) => (
+              <GameCard
+                key={game.id}
+                title={game.name}
+                description={game.description}
+                icon={iconMap[game.icon || 'wind'] || <Wind className="w-10 h-10" />}
+                href={game.href || `/games/${game.id}`}
+                level={game.level || 1}
+                unlocked={game.unlocked !== false}
+                stars={game.stars || 0}
+                color={colorMap[game.color || 'mint'] || 'mint'}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && filteredGames.length === 0 && (
+          <div className="text-center py-12">
+            <Mascot mood="thinking" size="lg" className="mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-foreground mb-2">No games found</h3>
+            <p className="text-muted-foreground">
+              Try selecting a different category!
+            </p>
+          </div>
+        )}
 
         {/* Encouragement Banner */}
         <div className="mt-12 bg-primary/10 rounded-3xl p-8 text-center border-4 border-primary/30">

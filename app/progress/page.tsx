@@ -1,21 +1,36 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
+import Link from "next/link"
 import { AppNav } from "@/components/app-nav"
 import { Mascot } from "@/components/mascot"
 import { Button } from "@/components/ui/button"
+import { useAchievements, useChallenges } from "@/hooks/use-api"
+import { useAuth } from "@/lib/auth-context"
 import { 
   Star, Trophy, Flame, Heart, Brain, Target, Gift, 
-  Calendar, TrendingUp, Award, Sparkles, ChevronRight
+  Calendar, TrendingUp, Award, Sparkles, ChevronRight, Loader2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const achievements = [
+// Icon mapping for achievements
+const iconMap: Record<string, React.ElementType> = {
+  heart: Heart,
+  brain: Brain,
+  flame: Flame,
+  star: Star,
+  gift: Gift,
+  target: Target,
+  trophy: Trophy,
+}
+
+// Fallback data for offline mode
+const fallbackAchievements = [
   {
     id: "first-breath",
     title: "First Breath",
     description: "Complete your first breathing exercise",
-    icon: Heart,
+    icon: "heart",
     unlocked: true,
     color: "bg-coral",
   },
@@ -23,7 +38,7 @@ const achievements = [
     id: "emotion-expert",
     title: "Emotion Expert",
     description: "Identify 10 different emotions correctly",
-    icon: Brain,
+    icon: "brain",
     unlocked: true,
     color: "bg-mint",
   },
@@ -31,7 +46,7 @@ const achievements = [
     id: "week-warrior",
     title: "Week Warrior",
     description: "Play games for 7 days in a row",
-    icon: Flame,
+    icon: "flame",
     unlocked: true,
     color: "bg-sunny",
   },
@@ -39,7 +54,7 @@ const achievements = [
     id: "star-collector",
     title: "Star Collector",
     description: "Earn 50 stars total",
-    icon: Star,
+    icon: "star",
     unlocked: false,
     progress: 35,
     maxProgress: 50,
@@ -49,7 +64,7 @@ const achievements = [
     id: "friend-maker",
     title: "Friend Maker",
     description: "Complete all social skills games",
-    icon: Gift,
+    icon: "gift",
     unlocked: false,
     progress: 2,
     maxProgress: 5,
@@ -59,7 +74,7 @@ const achievements = [
     id: "calm-champion",
     title: "Calm Champion",
     description: "Do 100 breathing cycles",
-    icon: Target,
+    icon: "target",
     unlocked: false,
     progress: 42,
     maxProgress: 100,
@@ -85,13 +100,35 @@ const recentActivities = [
 ]
 
 export default function ProgressPage() {
-  const [selectedTab, setSelectedTab] = useState<"stats" | "achievements">("stats")
+  const [selectedTab, setSelectedTab] = useState<"stats" | "achievements" | "challenges">("stats")
+  const { user, isAuthenticated } = useAuth()
+  
+  const { data: apiAchievements, isLoading: achievementsLoading, error: achievementsError } = useAchievements()
+  const { data: apiChallenges, isLoading: challengesLoading } = useChallenges()
+
+  // Use API data or fallback
+  const achievements = useMemo(() => {
+    if (apiAchievements && apiAchievements.length > 0) {
+      return apiAchievements.map(a => ({
+        ...a,
+        icon: a.icon || 'star',
+        color: a.color || 'bg-primary',
+      }))
+    }
+    return fallbackAchievements
+  }, [apiAchievements])
+
+  const challenges = useMemo(() => {
+    return apiChallenges || []
+  }, [apiChallenges])
   
   const totalStars = 35
   const currentStreak = 5
   const totalMinutes = 100
   const gamesPlayed = 24
   const level = Math.floor(totalStars / 10) + 1
+
+  const isLoading = achievementsLoading || challengesLoading
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pt-24 md:pb-8">
@@ -110,7 +147,7 @@ export default function ProgressPage() {
             
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-                Super Star!
+                {isAuthenticated && user?.name ? `${user.name}'s Stars` : "Super Star!"}
               </h1>
               <p className="text-lg text-muted-foreground mb-4">
                 Level {level} Mind Explorer
@@ -158,7 +195,7 @@ export default function ProgressPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 flex-wrap">
           <Button
             variant={selectedTab === "stats" ? "default" : "outline"}
             onClick={() => setSelectedTab("stats")}
@@ -174,10 +211,45 @@ export default function ProgressPage() {
           >
             <Award className="w-4 h-4 mr-2" />
             Achievements
+            {achievements.filter(a => a.unlocked).length > 0 && (
+              <span className="ml-2 bg-primary-foreground/20 px-2 py-0.5 rounded-full text-xs">
+                {achievements.filter(a => a.unlocked).length}
+              </span>
+            )}
+          </Button>
+          <Button
+            variant={selectedTab === "challenges" ? "default" : "outline"}
+            onClick={() => setSelectedTab("challenges")}
+            className="rounded-full"
+          >
+            <Target className="w-4 h-4 mr-2" />
+            Challenges
+            {challenges.length > 0 && (
+              <span className="ml-2 bg-primary-foreground/20 px-2 py-0.5 rounded-full text-xs">
+                {challenges.filter(c => c.active && !c.completed).length}
+              </span>
+            )}
           </Button>
         </div>
 
-        {selectedTab === "stats" ? (
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <span className="ml-2 text-muted-foreground">Loading...</span>
+          </div>
+        )}
+
+        {/* Error notification */}
+        {achievementsError && (
+          <div className="bg-secondary/20 border-2 border-secondary rounded-2xl p-4 mb-6">
+            <p className="text-sm text-muted-foreground">
+              Using offline data. Connect to the internet to see the latest!
+            </p>
+          </div>
+        )}
+
+        {!isLoading && selectedTab === "stats" && (
           <div className="space-y-6">
             {/* Weekly Activity */}
             <div className="bg-card rounded-3xl border-4 border-border p-6">
@@ -244,17 +316,19 @@ export default function ProgressPage() {
               </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {!isLoading && selectedTab === "achievements" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {achievements.map((achievement) => {
-              const Icon = achievement.icon
+              const Icon = iconMap[achievement.icon || 'star'] || Star
               return (
                 <div
                   key={achievement.id}
                   className={cn(
                     "relative p-6 rounded-3xl border-4 transition-all",
                     achievement.unlocked 
-                      ? `${achievement.color}/20 border-${achievement.color.replace('bg-', '')}`
+                      ? `${achievement.color}/20 border-${achievement.color?.replace('bg-', '') || 'primary'}`
                       : "bg-muted/50 border-muted opacity-75"
                   )}
                 >
@@ -311,6 +385,76 @@ export default function ProgressPage() {
           </div>
         )}
 
+        {!isLoading && selectedTab === "challenges" && (
+          <div className="space-y-4">
+            {challenges.length === 0 ? (
+              <div className="bg-card rounded-3xl border-4 border-border p-8 text-center">
+                <Mascot mood="thinking" size="md" className="mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-foreground mb-2">No Active Challenges</h3>
+                <p className="text-muted-foreground mb-4">
+                  Check back later for new challenges!
+                </p>
+                <Link href="/games">
+                  <Button className="rounded-full">
+                    Play Games Instead
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              challenges.map((challenge) => (
+                <div
+                  key={challenge.id}
+                  className={cn(
+                    "p-6 rounded-3xl border-4 transition-all",
+                    challenge.completed 
+                      ? "bg-mint/20 border-mint"
+                      : challenge.active 
+                        ? "bg-primary/20 border-primary"
+                        : "bg-muted/50 border-muted"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "w-14 h-14 rounded-2xl flex items-center justify-center",
+                        challenge.completed ? "bg-mint" : challenge.active ? "bg-primary" : "bg-muted"
+                      )}>
+                        <Target className="w-7 h-7 text-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-foreground text-lg">{challenge.name}</h3>
+                        <p className="text-sm text-muted-foreground">{challenge.description}</p>
+                        {challenge.reward && (
+                          <div className="flex items-center gap-1 mt-1 text-sm text-secondary">
+                            <Trophy className="w-4 h-4" />
+                            <span>{challenge.reward} points reward</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {challenge.completed ? (
+                      <div className="flex items-center gap-2 text-mint font-bold">
+                        <Sparkles className="w-5 h-5" />
+                        Complete!
+                      </div>
+                    ) : challenge.active ? (
+                      <Link href={challenge.gameId ? `/games/${challenge.gameId}` : "/games"}>
+                        <Button className="rounded-full">
+                          Start
+                          <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Coming Soon</span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
         {/* Motivational Banner */}
         <div className="mt-8 bg-primary/10 rounded-3xl p-8 text-center border-4 border-primary/30">
           <Sparkles className="w-12 h-12 mx-auto mb-4 text-primary" />
@@ -321,10 +465,12 @@ export default function ProgressPage() {
             Every time you play, you learn something new about yourself. 
             You are becoming stronger every day!
           </p>
-          <Button className="rounded-full">
-            Play More Games
-            <ChevronRight className="w-5 h-5 ml-1" />
-          </Button>
+          <Link href="/games">
+            <Button className="rounded-full">
+              Play More Games
+              <ChevronRight className="w-5 h-5 ml-1" />
+            </Button>
+          </Link>
         </div>
       </main>
     </div>

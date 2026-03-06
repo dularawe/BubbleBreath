@@ -2,6 +2,8 @@ import React from "react"
 import type { Metadata } from 'next'
 import { Nunito } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { AuthProvider } from '@/lib/auth-context'
+import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 const _nunito = Nunito({ subsets: ["latin"], weight: ["400", "600", "700", "800"] });
@@ -37,7 +39,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`font-sans antialiased`}>
-        {children}
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

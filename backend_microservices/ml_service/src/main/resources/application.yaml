@@ -1,0 +1,31 @@
+server:
+  port: 8095
+
+spring:
+  application:
+    name: ml-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ml_service_db
+    username: ml_service_user
+    password: change_me
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+application:
+  security:
+    jwt:
+      # use SAME secret as admin_service so tokens validate across services
+      secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+
+ml:
+  api:
+    url: https://your-ml-api.example.com/classify
+    api-key: CHANGE_ME_API_KEY
+

@@ -1,0 +1,18 @@
+services:
+  mysql:
+    image: 'mysql:latest'
+    environment:
+      - 'MYSQL_DATABASE=admin_service'
+      - 'MYSQL_PASSWORD=secret'
+      - 'MYSQL_USER=admin'
+      - 'MYSQL_ROOT_PASSWORD=rootsecret'
+    ports:
+      - '3306:3306'
+  rabbitmq:
+    image: 'rabbitmq:latest'
+    environment:
+      - 'RABBITMQ_DEFAULT_PASS=secret'
+      - 'RABBITMQ_DEFAULT_USER=admin'
+    ports:
+      - '5672:5672'
+

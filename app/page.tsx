@@ -5,7 +5,9 @@ import Link from "next/link"
 import { AppNav } from "@/components/app-nav"
 import { Mascot } from "@/components/mascot"
 import { Button } from "@/components/ui/button"
-import { Video, Gamepad2, Trophy, Sparkles } from "lucide-react"
+import { useChallenges } from "@/hooks/use-api"
+import { useAuth } from "@/lib/auth-context"
+import { Video, Gamepad2, Trophy, Sparkles, Loader2 } from "lucide-react"
 
 const greetings = [
   "Hey there, superstar!",
@@ -24,12 +26,23 @@ const tips = [
 ]
 
 export default function HomePage() {
+  const { user, isAuthenticated } = useAuth()
+  const { data: challenges, isLoading: challengesLoading } = useChallenges()
+  
   const [greeting, setGreeting] = useState(greetings[0])
   const [tip, setTip] = useState(tips[0])
   const [mascotMood, setMascotMood] = useState<"happy" | "waving" | "excited">("waving")
 
+  // Get today's active challenge
+  const todayChallenge = challenges?.find(c => c.active && !c.completed) || challenges?.[0]
+
   useEffect(() => {
-    setGreeting(greetings[Math.floor(Math.random() * greetings.length)])
+    // Personalize greeting if user is logged in
+    if (isAuthenticated && user?.name) {
+      setGreeting(`Hey ${user.name.split(' ')[0]}, superstar!`)
+    } else {
+      setGreeting(greetings[Math.floor(Math.random() * greetings.length)])
+    }
     setTip(tips[Math.floor(Math.random() * tips.length)])
     
     const moodInterval = setInterval(() => {
@@ -41,7 +54,7 @@ export default function HomePage() {
     }, 3000)
     
     return () => clearInterval(moodInterval)
-  }, [])
+  }, [isAuthenticated, user])
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pt-24 md:pb-8">
@@ -117,19 +130,69 @@ export default function HomePage() {
             <span className="text-sm font-bold text-primary">Today&apos;s Challenge</span>
           </div>
           
-          <h3 className="text-2xl font-bold text-foreground mb-4">
-            Breathing Bubble Adventure
-          </h3>
-          
-          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-            Help our mascot blow magical bubbles by taking slow, deep breaths. 
-            Can you make the biggest bubble?
-          </p>
-          
-          <Button size="lg" className="rounded-full px-8 py-6 text-lg font-bold">
-            Start Challenge
-          </Button>
+          {challengesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              <span className="ml-2 text-muted-foreground">Loading challenge...</span>
+            </div>
+          ) : todayChallenge ? (
+            <>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                {todayChallenge.name}
+              </h3>
+              
+              <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                {todayChallenge.description}
+              </p>
+
+              {todayChallenge.reward && (
+                <div className="inline-flex items-center gap-2 bg-secondary/20 px-4 py-2 rounded-full mb-6">
+                  <Trophy className="w-4 h-4 text-secondary" />
+                  <span className="text-sm font-medium text-foreground">
+                    Earn {todayChallenge.reward} points!
+                  </span>
+                </div>
+              )}
+              
+              <Link href={todayChallenge.gameId ? `/games/${todayChallenge.gameId}` : "/games/bubble-breathing"}>
+                <Button size="lg" className="rounded-full px-8 py-6 text-lg font-bold">
+                  Start Challenge
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <>
+              <h3 className="text-2xl font-bold text-foreground mb-4">
+                Breathing Bubble Adventure
+              </h3>
+              
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Help our mascot blow magical bubbles by taking slow, deep breaths. 
+                Can you make the biggest bubble?
+              </p>
+              
+              <Link href="/games/bubble-breathing">
+                <Button size="lg" className="rounded-full px-8 py-6 text-lg font-bold">
+                  Start Challenge
+                </Button>
+              </Link>
+            </>
+          )}
         </section>
+
+        {/* Sign In Prompt for guests */}
+        {!isAuthenticated && (
+          <section className="mt-8 bg-muted/50 rounded-3xl p-6 text-center border-2 border-border">
+            <p className="text-muted-foreground mb-4">
+              Sign in to save your progress and unlock more features!
+            </p>
+            <Link href="/login">
+              <Button variant="outline" className="rounded-full border-2">
+                Sign In
+              </Button>
+            </Link>
+          </section>
+        )}
       </main>
     </div>
   )

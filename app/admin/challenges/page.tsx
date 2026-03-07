@@ -198,14 +198,14 @@ export default function ChallengesAdminPage() {
                 <div className="space-y-2">
                   <Label htmlFor="game">Associated Game</Label>
                   <Select
-                    value={formData.gameId}
-                    onValueChange={(value) => setFormData({ ...formData, gameId: value })}
+                    value={formData.gameId || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, gameId: value === "none" ? "" : value })}
                   >
                     <SelectTrigger className="rounded-xl">
                       <SelectValue placeholder="Select game (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {games?.map((game) => (
                         <SelectItem key={game.id} value={game.id}>
                           {game.name}
@@ -376,14 +376,14 @@ export default function ChallengesAdminPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-game">Associated Game</Label>
                 <Select
-                  value={formData.gameId}
-                  onValueChange={(value) => setFormData({ ...formData, gameId: value })}
+                  value={formData.gameId || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, gameId: value === "none" ? "" : value })}
                 >
                   <SelectTrigger className="rounded-xl">
                     <SelectValue placeholder="Select game (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {games?.map((game) => (
                       <SelectItem key={game.id} value={game.id}>
                         {game.name}

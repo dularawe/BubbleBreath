@@ -67,10 +67,10 @@ export default function ChallengesAdminPage() {
     setIsSubmitting(true)
     try {
       await demoStore.challenges.create({ ...formData, active: true, completed: false })
+      await mutate("challenges")
       toast.success("Challenge created successfully!")
       setIsCreateOpen(false)
       resetForm()
-      mutate("challenges")
     } catch (err) {
       console.error(err)
       toast.error("Failed to create challenge")
@@ -85,10 +85,10 @@ export default function ChallengesAdminPage() {
     setIsSubmitting(true)
     try {
       await demoStore.challenges.update(editingChallenge.id, formData)
+      await mutate("challenges")
       toast.success("Challenge updated successfully!")
       setEditingChallenge(null)
       resetForm()
-      mutate("challenges")
     } catch (err) {
       console.error(err)
       toast.error("Failed to update challenge")
@@ -103,8 +103,8 @@ export default function ChallengesAdminPage() {
     setDeletingId(id)
     try {
       await demoStore.challenges.delete(id)
+      await mutate("challenges")
       toast.success("Challenge deleted successfully!")
-      mutate("challenges")
     } catch (err) {
       console.error(err)
       toast.error("Failed to delete challenge")
@@ -152,9 +152,12 @@ export default function ChallengesAdminPage() {
             />
           </div>
           
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+              setIsCreateOpen(open)
+              if (open) resetForm()
+            }}>
             <DialogTrigger asChild>
-              <Button className="rounded-xl" onClick={resetForm}>
+              <Button className="rounded-xl">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Challenge
               </Button>
@@ -198,14 +201,14 @@ export default function ChallengesAdminPage() {
                 <div className="space-y-2">
                   <Label htmlFor="game">Associated Game</Label>
                   <Select
-                    value={formData.gameId}
-                    onValueChange={(value) => setFormData({ ...formData, gameId: value })}
+                    value={formData.gameId || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, gameId: value === "none" ? "" : value })}
                   >
                     <SelectTrigger className="rounded-xl">
                       <SelectValue placeholder="Select game (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {games?.map((game) => (
                         <SelectItem key={game.id} value={game.id}>
                           {game.name}
@@ -376,14 +379,14 @@ export default function ChallengesAdminPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-game">Associated Game</Label>
                 <Select
-                  value={formData.gameId}
-                  onValueChange={(value) => setFormData({ ...formData, gameId: value })}
+                  value={formData.gameId || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, gameId: value === "none" ? "" : value })}
                 >
                   <SelectTrigger className="rounded-xl">
                     <SelectValue placeholder="Select game (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {games?.map((game) => (
                       <SelectItem key={game.id} value={game.id}>
                         {game.name}
